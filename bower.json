@@ -1,0 +1,12 @@
+{
+  "name": "game-thing",
+  "version": "0.0.0",
+  "authors": [
+    "Daniel Perrelly <danperrelly@gmail.com>"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "angular": "~1.4.5",
+    "jquery": "~2.1.4"
+  }
+}
