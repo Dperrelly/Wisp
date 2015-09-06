@@ -30,6 +30,56 @@ console.log('listening on port: ' + port);
 server.on('error', onError);
 server.on('listening', onListening);
 
+
+var io = require('socket.io')(server);
+
+io.set('log level', false);
+var others = [];
+var things = [];
+
+io.on('connection', function(socket){
+    console.log('A new client has connected!');
+    console.log(socket.id);
+
+    socket.broadcast.emit('newPlayer', {id: socket.id, x:-50, y:1});
+    others.push({id: socket.id, x:-50, y:1});
+
+    socket.on('error', function(error){
+      console.log(error);
+    });
+
+    socket.on('disconnect', function(){
+        console.log(socket.id, 'disconnected');
+        for(var i = 0; i < others.length; i++){
+             if(others[i].id === socket.id) {
+                  others.splice(i, 1);
+                  io.sockets.emit('disconnect', socket.id);
+                  break;
+              }
+        }
+    });
+
+    socket.on('populate', function(){
+        socket.emit('populate', {things: things, others: JSON.stringify(others)});
+    });    
+
+    socket.on('newThing', function(thing){
+      console.log(thing);
+      things.push(thing);
+      socket.broadcast.emit('newThing', thing);
+    });
+
+    socket.on('move', function(playerInfo){
+      socket.broadcast.emit('move', playerInfo);
+      for(var i = 0; i< others.length; i++){
+          if(others[i].id === playerInfo.id) {
+            others[i].x = playerInfo.x;
+            others[i].y = playerInfo.y;
+            break;
+          }
+        }
+    });
+ });
 /**
  * Normalize a port into a number, string, or false.
  */
