@@ -4,6 +4,7 @@
     var screamImg = $('<img id="scream" src="/images/box.png">')[0];
     var blockImg = $('<img id="block" src="/images/block.png">')[0];
     var backgroundImg = $('<img id="background" src="/images/background.png">')[0];
+    var spikeImg = $('<img id="spike" src="/images/spike.png" width="50" height="70">')[0];
     var sprite1Img = $('<img id="sprite1" src="/images/sprite1.png">')[0];
     var sprite2Img = $('<img id="sprite2" src="/images/sprite2.png">')[0];
     var selectedImg = blockImg;
@@ -12,6 +13,10 @@
     	//console.log(img);
     };
 window.onload = function() {
+	$('#loader').hide();
+	$('#wrapper').show();
+	$('.audio').prop('volume', 0.1);
+	$('#doublejump').prop('volume', 0.16);
     var canvas = document.getElementById("canvas");
     var ctx = canvas.getContext("2d");
     //console.log(kidImg);	

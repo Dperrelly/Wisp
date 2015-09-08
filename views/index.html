@@ -1,23 +1,40 @@
 <!DOCTYPE html>
 	<html>
 	<head>
-		<title>game-thing </title>
+		<title>game-thing</title>
+		<link rel="stylesheet" href="/stylesheets/style.css">
 	</head>
 	<body>
-
-		<canvas id="canvas" width="960" height="640" style="border:1px solid #000000;">
-		Your browser does not support the HTML5 canvas tag.
-		</canvas>
-		<img id="lilblock" src="/images/block.png" width='25' height='20' onclick='selectImg(this)'>
-		<img id="block" src="/images/block.png" width='50' height='40' onclick='selectImg(this)'>
-		<img id="box" src="/images/box.png" width='75' height='75' onclick='selectImg(this)'>
-		<img id="jess" src="/images/box.png" width='100' height='100' onclick='selectImg(this)'>
-
-
-		<script src="/bower_components/jquery/dist/jquery.min.js"></script>
- 		<script src="/bower_components/angular/angular.min.js"></script>
- 		<script src="socket.io/socket.io.js"></script>
-		<script src="/javascripts/loader.js"></script>
-		<script src="/javascripts/game.js"></script>
+		<img id="loader" src="/images/webSpinner.gif" width='200' height='200'>
+		<div id='wrapper' hidden='true'>
+			<canvas id="canvas" width="960" height="640" style="border:1px solid #000000;">
+			Your browser does not support the HTML5 canvas tag.
+			</canvas>
+			<!-- <ul id="messages"></ul>
+		   	<form action="">
+		      <input id="m" autocomplete="off" /><button>Send</button>
+		    </form> -->
+		    <div id='objects'>
+				<img id="lilblock" src="/images/block.png" width='25' height='25' onclick='selectImg(this)'>
+				<img id="block" src="/images/block.png" width='50' height='50' onclick='selectImg(this)'>
+				<img id="spike" class='spike' src="/images/spike.png" width='50' height='50' onclick='selectImg(this)'>
+				<img id="box" src="/images/box.png" width='75' height='75' onclick='selectImg(this)'>
+				<img id="jess" src="/images/box.png" width='100' height='100' onclick='selectImg(this)'>
+			</div>
+		</div>
+			<audio id='marine' class="audio" controls hidden='true'> 
+  				<source src="sounds/marine.wav" type="audio/wav">
+			</audio>
+			<audio id='jump' class="audio" controls hidden='true'> 
+  				<source src="sounds/jump.mp3" type="audio/mpeg">
+			</audio>
+			<audio id='doublejump' class="audio" controls hidden='true'> 
+  				<source src="sounds/doublejump.mp3" type="audio/mpeg">
+			</audio>
+			<script src="/bower_components/jquery/dist/jquery.min.js"></script>
+	 		<script src="/bower_components/angular/angular.min.js"></script>
+	 		<script src="socket.io/socket.io.js"></script>
+			<script src="/javascripts/loader.js"></script>
+			<script src="/javascripts/game.js"></script>
 	</body>
 </html>

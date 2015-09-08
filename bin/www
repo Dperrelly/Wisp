@@ -33,16 +33,16 @@ server.on('listening', onListening);
 
 var io = require('socket.io')(server);
 
-io.set('log level', false);
-var others = [];
+var players = [];
 var things = [];
+var spikes = [];
 
 io.on('connection', function(socket){
     console.log('A new client has connected!');
     console.log(socket.id);
 
-    socket.broadcast.emit('newPlayer', {id: socket.id, x:-50, y:1});
-    others.push({id: socket.id, x:-50, y:1});
+    socket.broadcast.emit('newPlayer', {sprite: 1, id: socket.id, x:-50, y:1});
+    players.push({sprite: 1, id: socket.id, x:-50, y:1});
 
     socket.on('error', function(error){
       console.log(error);
@@ -50,9 +50,9 @@ io.on('connection', function(socket){
 
     socket.on('disconnect', function(){
         console.log(socket.id, 'disconnected');
-        for(var i = 0; i < others.length; i++){
-             if(others[i].id === socket.id) {
-                  others.splice(i, 1);
+        for(var i = 0; i < players.length; i++){
+             if(players[i].id === socket.id) {
+                  players.splice(i, 1);
                   io.sockets.emit('disconnect', socket.id);
                   break;
               }
@@ -60,21 +60,45 @@ io.on('connection', function(socket){
     });
 
     socket.on('populate', function(){
-        socket.emit('populate', {things: things, others: JSON.stringify(others)});
+        socket.emit('populate', {things: things, players: JSON.stringify(players), spikes: spikes});
     });    
 
     socket.on('newThing', function(thing){
-      console.log(thing);
       things.push(thing);
       socket.broadcast.emit('newThing', thing);
     });
 
+    socket.on('newSpike', function(spike){
+      spikes.push(spike);
+      socket.broadcast.emit('newSpike', spike);
+    });
+
+    socket.on('delete', function (click){
+      clickX = click.clickX;
+      clickY= click.clickY;
+      for(var i = things.length - 1; i >=0; i--) {
+        if(clickX > things[i].x && clickX < things[i].x + Number(things[i].width) &&
+        clickY > things[i].y && clickY < things[i].y + Number(things[i].height)){
+          things.splice(i, 1);
+        }
+      }
+      spikes = spikes.filter(function(spike){
+        if(clickX > spike.x && clickX < spike.x + Number(spike.width) &&
+        clickY > spike.y && clickY < spike.y + Number(spike.height)){
+          return false;
+        }
+        return true;
+      });
+      socket.broadcast.emit('delete', click);
+    });
+
     socket.on('move', function(playerInfo){
       socket.broadcast.emit('move', playerInfo);
-      for(var i = 0; i< others.length; i++){
-          if(others[i].id === playerInfo.id) {
-            others[i].x = playerInfo.x;
-            others[i].y = playerInfo.y;
+      for(var i = 0; i< players.length; i++){
+          if(players[i].id === playerInfo.id) {
+            players[i].sprite = playerInfo.sprite;
+            players[i].x = playerInfo.x;
+            players[i].y = playerInfo.y;
             break;
           }
         }

@@ -8,6 +8,7 @@ function game(ctx, canvas){
 	var worldHeight = 640;
 	var playerWidth = 22;
 	var playerHeight = 30;
+	var hitWidth = 20;
 	var xSpeed = 0;
 	var ySpeed = 0;
 	var camera = {x: 0, y: 0};
@@ -20,10 +21,16 @@ function game(ctx, canvas){
 	var grounded = false;
 	var gravityCounter = 0;
 	var falling = false;
-	var spawnX = 500;
-	var spawnY = 15;
+	var spawnX = 70;
+	var spawnY = 384;
 	var others = [];
 	var things = [];
+	var spikes = [];
+	var sprite = 1;
+	var spriteMap = {
+		1: sprite1Img,
+		2: sprite2Img
+	};
 	//var facing = 'right';
 
 	function direction(){
@@ -35,15 +42,20 @@ function game(ctx, canvas){
 		left: false,
 		right: false,
 		up: false,
-		down: false
+		down: false,
+		d:false
 	};
 
 	var jump = function(){
 		if(hasJump){
+			$("#jump").prop("currentTime", 0);
+			$("#jump").trigger('play');
 		 	jumping = true;
 		 	ySpeed -= jumpStrength;
 		 	hasJump = false;
 		}else if(hasDoubleJump && !jumping){
+			$("#doublejump").prop("currentTime", 0);
+			$("#doublejump").trigger('play');
 			jumping = true;
 			ySpeed = jumpStrength/-1.3;
 			hasDoubleJump = false;
@@ -79,6 +91,7 @@ function game(ctx, canvas){
 		}
 		if(keycode === 39) controls.right = true;
 		if(keycode === 40) controls.down = true;
+		if(keycode === 68) controls.d = true;
 	});
 	$(document).keyup(function(event){
 	
@@ -89,7 +102,8 @@ function game(ctx, canvas){
 			releaseJump();
 		}
 		if(keycode === 39) controls.right = false;
-		if(keycode === 40) controls.down = false;	
+		if(keycode === 40) controls.down = false;
+		if(keycode === 68) controls.d = false;	
 	});
 
 	 //initialize collision grid
@@ -150,22 +164,91 @@ function game(ctx, canvas){
 	 	}
 	 };
 
+	 var resetCollision = function(){
+	 	for(var k = 0; k < worldWidth; k++){
+		 	for(var j = 0; j < worldHeight; j++){
+		 		collisionGrid[k][j] = {collision: false, death: false};
+		 	}
+	 	}
+	 	things.forEach(function(thing){
+	 		setCollision(thing);
+	 	});
+	 	spikes.forEach(function(spike){
+		 	var slope = 2 * spike.height / spike.width;
+		 	for(var i = 0; i < spike.width; i++){
+			 	for(var j = spike.height - 1; j >= 0; j--){
+			 		if(collisionGrid[i + spike.x] && collisionGrid[i + spike.x][j + spike.y] &&
+			 		spike.height - j <= slope * i && 
+			 		j >= slope*(i - spike.width/2)
+			 		){
+			 			collisionGrid[i + spike.x][j + spike.y].death = true;
+			 		}
+			 	}
+		 	}
+	 	});
+	 };
+
 	 var ground = function(x, y, width, height){
 	 	y = Math.ceil(y);
 	 	while(!checkCollision(x, y + 1, playerWidth, playerHeight)) {
 	 		y++;
 	 	}
+	 	hasJump = true;
+		hasDoubleJump = true;
 	 	grounded = true;
 	 	ySpeed = 0;
 	 	return y - 1;
 	 };
 
 	 var bonk = function(x, y, width, height){
-	 	while(!checkCollision(x, y - 1, playerWidth, playerHeight)) {
-	 		y--;
-	 	}
-	 	ySpeed = 0;
+	 	if(ySpeed < 0){
+		 	while(!checkCollision(x, y - 1, playerWidth, playerHeight)) {
+		 		y--;
+		 	}
+		 	ySpeed = 0;
+		 }
 	 	return y;
+	 };
+
+
+	 var createSpike = function(img, x, y){
+	 	var width = img.getAttribute('width');
+	 	var height = img.getAttribute('height');
+	 	var slope = 2 * height / width;
+	 	for(var i = 0; i < width; i++){
+		 	for(var j = height - 1; j >= 0; j--){
+		 		if(collisionGrid[i + x] && collisionGrid[i + x][j + y] &&
+		 		height - j <= slope * i && 
+		 		j >= slope*(i - width/2)
+		 		){
+		 			collisionGrid[i + x][j + y].death = true;
+		 		}
+		 	}
+	 	}
+	 	spikes.push({img: img, x: x, y: y, width: width, height: height});
+	 };
+
+
+
+	 var checkDeath = function(x, y){
+	 	x = Math.round(x);
+	 	y = Math.round(y);
+	 	for(var i = 0; i < playerWidth; i++){
+	 		for(var j = 0; j < playerHeight; j++){
+	 			if(collisionGrid[i + x] && collisionGrid[i + x][j + y] && collisionGrid[i + x][j + y].death) {
+	 				return true;
+	 			}
+	 		}
+	 	}
+	 	return false;
+	 };
+
+	 var die = function(){
+	 	playerThing.x = 1;
+		playerThing.y = 1;
+		camera.x = 0;
+		camera.y = 0;
+		$("#marine").trigger('play');
 	 };
 
 	 // var moveX =  function(x, y, width, height){
@@ -233,17 +316,51 @@ function game(ctx, canvas){
 		things.push(newThing);
 	};
 
+
+	createSpike(spikeImg, 810, 570);
+	createSpike(spikeImg, 860, 570);
+	createSpike(spikeImg, 910, 570);
+	createSpike(spikeImg, 960, 570);
 	createThing(blockImg, 655, 420, 50, 40);
-	createThing(blockImg, 1300, 520, 50, 40);
+	createThing(blockImg, 58, 498, 50, 40);
 	createThing(screamImg, 600, 540, 100, 100);
+
+	var deleteStuff = function(clickX, clickY){
+		for(var i = things.length - 1; i >=0; i--) {
+			if(clickX > things[i].x && clickX < things[i].x + Number(things[i].width) &&
+			clickY > things[i].y && clickY < things[i].y + Number(things[i].height)){
+				things.splice(i, 1);
+			}
+		}
+		spikes = spikes.filter(function(spike){
+			if(clickX > spike.x && clickX < spike.x + Number(spike.width) &&
+			clickY > spike.y && clickY < spike.y + Number(spike.height)){
+				return false;
+			}
+			return true;
+		});
+		resetCollision();
+	};
 
 	canvas.addEventListener('mousedown', function (e) {
 		var clickX = e.pageX - this.offsetLeft;
 		var clickY = e.pageY - this.offsetTop;
-		var width = selectedImg.getAttribute('width');
-		var height = selectedImg.getAttribute('height');
-        createThing(selectedImg, clickX + camera.x - Math.round(width/2), clickY + camera.y - Math.round(height/2), selectedImg.getAttribute('width'), selectedImg.getAttribute('height'));
-        socket.emit('newThing', {img: $('<div>').append($(selectedImg).clone()).html(), x: clickX + camera.x - Math.round(width/2), y: clickY + camera.y - Math.round(height/2), width: selectedImg.getAttribute('width'), height: selectedImg.getAttribute('height')});
+		console.log(clickX, clickY);
+		if(!controls.d){
+			var width = selectedImg.getAttribute('width');
+			var height = selectedImg.getAttribute('height');
+			if(selectedImg.getAttribute('class') === 'spike') {
+				socket.emit('newSpike', {img: $(selectedImg).prop('outerHTML'), x: clickX + camera.x - Math.round(width/2), y: clickY + camera.y - Math.round(height/2), width: selectedImg.getAttribute('width'), height: selectedImg.getAttribute('height')});
+				createSpike(selectedImg, clickX + camera.x - Math.round(width/2), clickY + camera.y - Math.round(height/2));
+			}
+			else {
+		        createThing(selectedImg, clickX + camera.x - Math.round(width/2), clickY + camera.y - Math.round(height/2), selectedImg.getAttribute('width'), selectedImg.getAttribute('height'));
+		        socket.emit('newThing', {img: $(selectedImg).prop('outerHTML'), x: clickX + camera.x - Math.round(width/2), y: clickY + camera.y - Math.round(height/2), width: selectedImg.getAttribute('width'), height: selectedImg.getAttribute('height')});	
+			}
+		}else{
+			socket.emit('delete', {clickX: clickX, clickY: clickY});
+			deleteStuff(clickX, clickY);
+		}
     });
 
 	backgroundThing = new Thing(backgroundImg, 0, 0, worldWidth, worldHeight);
@@ -251,8 +368,8 @@ function game(ctx, canvas){
 	playerThing = new Thing(sprite1Img, spawnX, spawnY, playerWidth, playerHeight);
 
 	 var nextFrame = function(x, y){
-	 	var newX = x;
-	 	var newY = y;
+	 	var newX = playerThing.x;
+	 	var newY = playerThing.y;
 
 	 	//gravityCounter++;
 
@@ -265,46 +382,47 @@ function game(ctx, canvas){
 	 	if(controls.right) {
 	 		xSpeed += moveSpeed;
 	 		playerThing.img = sprite1Img;
+	 		sprite = 1;
 	 	}
 	 	if(controls.left) {
 	 		xSpeed -= moveSpeed;
 			playerThing.img = sprite2Img;
+			sprite = 2;
 	 	}
 
 	 	//if(xSpeed !== 0) newX += moveX(x, y, playerWidth, playerHeight);
 
-	 	newX = x + xSpeed;
+	 	newX = playerThing.x + xSpeed;
 
-	 	if(xSpeed !== 0 && checkCollision(newX, y, playerWidth, playerHeight)) {
+	 	if(xSpeed !== 0 && checkCollision(newX, playerThing.y, playerWidth, playerHeight)) {
 	 		if(xSpeed > 0) {
-	 			newX = hugRight(x, y, playerWidth, playerHeight);
+	 			newX = hugRight(playerThing.x, playerThing.y, playerWidth, playerHeight);
 	 		}
 	 		else {
-	 			newX = hugLeft(x, y, playerWidth, playerHeight);
+	 			newX = hugLeft(playerThing.x, playerThing.y, playerWidth, playerHeight);
 	 		}
 	 	}
 
 	 	falling = (ySpeed > 0);
 
-		grounded = checkCollision(x, y + 1, playerWidth, playerHeight);
+		grounded = checkCollision(playerThing.x, playerThing.y + 1, playerWidth, playerHeight);
 	 	if(falling){	
 		 	//check and fix if falling would cause collision
-		 	if(checkCollision(newX, y + ySpeed, playerWidth, playerHeight)) {
-		 		newY = ground(newX, y, playerWidth, playerHeight);
-		 		hasJump = true;
-		 		hasDoubleJump = true;
-		 		ySpeed = 0;
+		 	if(checkCollision(newX, playerThing.y + ySpeed, playerWidth, playerHeight)) {
+		 		newY = ground(newX, playerThing.y, playerWidth, playerHeight);
 		 		//console.log('nope');
 		 	}
 	 		//console.log(ySpeed);
 	 	}else{
-	 		if(checkCollision(newX, y + ySpeed, playerWidth, playerHeight)) {
-	 			newY = bonk(newX, y, playerWidth, playerHeight);
-		 		ySpeed = 0;
+	 		if(checkCollision(newX, playerThing.y + ySpeed, playerWidth, playerHeight)) {
+	 			newY = bonk(newX, playerThing.y, playerWidth, playerHeight);
 		 		//console.log('nope');
 		 	}
 	 	}
-	 	if(!grounded) ySpeed += gravity;
+	 	if(!grounded) {
+	 		ySpeed += gravity;
+	 		hasJump = false;
+	 	}
 
 	 	newY += ySpeed;
 
@@ -313,6 +431,7 @@ function game(ctx, canvas){
 
 		//console.log(camera);
 		//camera.x = newX - canvasWidth/2;
+
 
 		playerThing.x = newX;
 		playerThing.y = newY;
@@ -326,17 +445,25 @@ function game(ctx, canvas){
 	 		thing.render();
 	 	});
 
+	 	spikes.forEach(function(spike){
+	 		drawWithCam(spike);
+	 	});
+
 
 	 	others.forEach(function(other){
-	 		if(other) drawWithCam({img: sprite1Img, x: other.x, y: other.y, width: playerWidth, height: playerHeight});
+	 		//console.log(spriteMap[other.sprite]);
+	 		if(other) drawWithCam({img: spriteMap[other.sprite], x: other.x, y: other.y, width: playerWidth, height: playerHeight});
 	 	});
 
 	 	drawWithCam(playerThing);
-	 	if(newX !== x || newY !== y) socket.emit('move', {id: socket.id, x: newX, y: newY});
+	 	if(newX !== x || newY !== y) socket.emit('move', {sprite: sprite,id: socket.id, x: newX, y: newY});
 		xSpeed = 0;
-	 	setTimeout(nextFrame, 16, newX, newY);
+		if(checkDeath(newX, newY)){
+			die();
+		}
+	 	setTimeout(nextFrame, 16);
 	 };
-	 nextFrame(spawnX, spawnY);
+	 nextFrame();
 
 
 
@@ -346,7 +473,7 @@ function game(ctx, canvas){
 	    console.log(socket.id);
 
 	    socket.on('populate', function(data){
-	    	others = JSON.parse(data.others);
+	    	others = JSON.parse(data.players);
 	    	for(var i = 0; i< others.length; i++){
         	  if(others[i].id === socket.id) {
            		 others.splice(i, 1);
@@ -356,17 +483,21 @@ function game(ctx, canvas){
         	data.things.forEach(function(thing){
         		createThing($(thing.img)[0], thing.x, thing.y, thing.width, thing.height);
         	});
+        	data.spikes.forEach(function(spike){
+        		createSpike($(spike.img)[0], spike.x, spike.y);
+        	});
 	    });
 
 	    socket.emit('populate');
 
 	    socket.on("newPlayer", function(playerInfo){
-	    	others.push({id: playerInfo.id, x: playerInfo.x, y: playerInfo.y});
+	    	others.push({sprite: playerInfo.sprite, id: playerInfo.id, x: playerInfo.x, y: playerInfo.y});
 	    });
 
 	    socket.on('move', function(playerInfo){
 	    	for(var i = 0; i < others.length; i++){
 	    		if(others[i].id === playerInfo.id) {
+	    			others[i].sprite = playerInfo.sprite;
 			    	others[i].x = playerInfo.x;
 			    	others[i].y = playerInfo.y;
 			    	break;
@@ -374,8 +505,16 @@ function game(ctx, canvas){
 	    	}
 	    });
 
+	    socket.on('delete', function(click){
+	    	deleteStuff(click.clickX, click.clickY);
+	    });
+
 	    socket.on('newThing', function(thing){
 	    	createThing($(thing.img)[0], thing.x, thing.y, thing.width, thing.height);
+	    });
+
+	    socket.on('newSpike', function(spike){
+	    	createSpike($(spike.img)[0], spike.x, spike.y);
 	    });
 
 	    socket.on('disconnect', function(id){
