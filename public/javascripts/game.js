@@ -26,6 +26,7 @@ function game(ctx, canvas){
 	var others = [];
 	var things = [];
 	var spikes = [];
+	var dead = false;
 	var sprite = 1;
 	var spriteMap = {
 		1: sprite1Img,
@@ -188,29 +189,6 @@ function game(ctx, canvas){
 	 	});
 	 };
 
-	 var ground = function(x, y, width, height){
-	 	y = Math.ceil(y);
-	 	while(!checkCollision(x, y + 1, playerWidth, playerHeight)) {
-	 		y++;
-	 	}
-	 	hasJump = true;
-		hasDoubleJump = true;
-	 	grounded = true;
-	 	ySpeed = 0;
-	 	return y - 1;
-	 };
-
-	 var bonk = function(x, y, width, height){
-	 	if(ySpeed < 0){
-		 	while(!checkCollision(x, y - 1, playerWidth, playerHeight)) {
-		 		y--;
-		 	}
-		 	ySpeed = 0;
-		 }
-	 	return y;
-	 };
-
-
 	 var createSpike = function(img, x, y){
 	 	var width = img.getAttribute('width');
 	 	var height = img.getAttribute('height');
@@ -243,9 +221,24 @@ function game(ctx, canvas){
 	 	return false;
 	 };
 
+	 var countdown = function(time){
+	 	$('#respawn').show();
+	 	$('#respawn-time').html(time);
+	 	if(time === 0) $('#respawn').hide();
+	 	else setTimeout(countdown, 1000, time-1);
+	 };
+
 	 var die = function(){
-	 	playerThing.x = 1;
-		playerThing.y = 1;
+	 	xSpeed = 0;
+	 	ySpeed = 0;
+	 	dead = true;
+	 	playerThing.x = -500;
+		playerThing.y = -1000;
+		countdown(5);
+		setTimeout(function(){
+			playerThing.x = spawnX;
+			playerThing.y = spawnY;
+		}, 5000);
 		camera.x = 0;
 		camera.y = 0;
 		$("#marine").trigger('play');
@@ -261,6 +254,27 @@ function game(ctx, canvas){
 	 // 	}
 	 // 	return distance + backwards;
 	 // };
+	 var ground = function(x, y, width, height){
+	 	y = Math.ceil(y);
+	 	while(!checkCollision(x, y + 1, playerWidth, playerHeight)) {
+	 		y++;
+	 	}
+	 	hasJump = true;
+		hasDoubleJump = true;
+	 	grounded = true;
+	 	ySpeed = 0;
+	 	return y - 1;
+	 };
+
+	 var bonk = function(x, y, width, height){
+	 	if(ySpeed < 0){
+		 	while(!checkCollision(x, y - 1, playerWidth, playerHeight)) {
+		 		y--;
+		 	}
+		 	ySpeed = 0;
+		 }
+	 	return y;
+	 };
 
 	 var hugRight = function(x, y, width, height){
 	 	while(!checkCollision(x+1, y, playerWidth, playerHeight)) {

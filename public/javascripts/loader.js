@@ -10,10 +10,10 @@
     var selectedImg = blockImg;
     var selectImg = function(img){
     	selectedImg = img;
-    	//console.log(img);
     };
 window.onload = function() {
 	$('#loader').hide();
+	$('#respawn').hide();
 	$('#wrapper').show();
 	$('.audio').prop('volume', 0.1);
 	$('#doublejump').prop('volume', 0.16);
