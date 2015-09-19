@@ -10,11 +10,18 @@
 			<canvas id="canvas" width="960" height="640" style="border:1px solid #000000;">
 			Your browser does not support the HTML5 canvas tag.
 			</canvas>
+			<div id='bottom'>
+				<img id='mute' class='mute' src='/images/mute.png' onclick='toggleMute()'>
+				<img id='unmute' class='mute' src='/images/unmute.png' onclick='toggleMute()'>
+			</div>
 			<!-- <ul id="messages"></ul>
 		   	<form action="">
 		      <input id="m" autocomplete="off" /><button>Send</button>
 		    </form> -->
 		    <div id='top'>
+		    	<div id='FPS'>
+		    		<span>FPS:</span> <span id='FPS-time'>0</span>
+		    	</div>
 			    <div id='respawn'>
 			    	<span>Respawn in</span> <span id='respawn-time'>5</span>
 			    </div>
@@ -23,7 +30,7 @@
 					<img id="block" src="/images/block.png" width='50' height='50' onclick='selectImg(this)'>
 					<img id="spike" class='spike' src="/images/spike.png" width='50' height='50' onclick='selectImg(this)'>
 					<img id="box" src="/images/box.png" width='75' height='75' onclick='selectImg(this)'>
-					<img id="jess" src="/images/box.png" width='100' height='100' onclick='selectImg(this)'>
+					<img id="bigbox" src="/images/box.png" width='100' height='100' onclick='selectImg(this)'>
 				</div>
 			</div>
 		</div>

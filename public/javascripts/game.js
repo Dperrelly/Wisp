@@ -1,38 +1,37 @@
 function game(ctx, canvas){
 
-	var socket = io(window.location.origin);
-
-	var canvasWidth = 960;
-	var canvasHeight = 640;
-	var worldWidth = 1500;
-	var worldHeight = 640;
-	var playerWidth = 22;
-	var playerHeight = 30;
-	var hitWidth = 20;
-	var xSpeed = 0;
-	var ySpeed = 0;
-	var camera = {x: 0, y: 0};
-	var jumping = false;
-	var moveSpeed = 5;
-	var jumpStrength = 12;
-	var gravity = 0.6 ;
-	var hasJump = false;
-	var hasDoubleJump = false;
-	var grounded = false;
-	var gravityCounter = 0;
-	var falling = false;
-	var spawnX = 70;
-	var spawnY = 384;
-	var others = [];
-	var things = [];
-	var spikes = [];
-	var dead = false;
-	var sprite = 1;
-	var spriteMap = {
+	var socket = io(window.location.origin),
+	canvasWidth = 960,
+	canvasHeight = 640,
+	worldWidth = 1500,
+	worldHeight = 640,
+	playerWidth = 22,
+	playerHeight = 30,
+	xSpeed = 0,
+	ySpeed = 0,
+	camera = {x: 0, y: 0},
+	jumping = false,
+	moveSpeed = 5,
+	jumpStrength = 12,
+	gravity = 0.6,
+	hasJump = false,
+	hasDoubleJump = false,
+	grounded = false,
+	falling = false,
+	rising = false,
+	spawnX = 70,
+	spawnY = 384,
+	others = [],
+	things = [],
+	spikes = [],
+	dead = false,
+	movingLeft = false,
+	movingRight = false,
+	sprite = 1,
+	spriteMap = {
 		1: sprite1Img,
 		2: sprite2Img
 	};
-	//var facing = 'right';
 
 	function direction(){
 		Math.atan2(xSpeed, ySpeed);
@@ -48,7 +47,7 @@ function game(ctx, canvas){
 	};
 
 	var jump = function(){
-		if(hasJump){
+		if(hasJump && !falling){
 			$("#jump").prop("currentTime", 0);
 			$("#jump").trigger('play');
 		 	jumping = true;
@@ -61,9 +60,6 @@ function game(ctx, canvas){
 			ySpeed = jumpStrength/-1.3;
 			hasDoubleJump = false;
 		}
-		// setTimeout(function(){
-		// 	jumping = false;
-		// }, 500);
 	 };
 
 	 var releaseJump = function(){
@@ -75,7 +71,7 @@ function game(ctx, canvas){
 
 	//prevent arrow key scrolling
 	window.addEventListener("keydown", function(e) {
-	    // space and arrow keys
+	    // shift and arrow keys
 	    if([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
 	        e.preventDefault();
 	    }
@@ -85,24 +81,52 @@ function game(ctx, canvas){
 	$(document).keydown(function(event){
 	
 		var keycode = (event.keyCode ? event.keyCode : event.which);
-		if(keycode === 37) controls.left = true;
-		if(keycode === 38 || keycode === 16) {
+		if(keycode === 37) {
+			controls.left = true;
+			if(!movingLeft){
+				movingLeft = true;
+				xSpeed -= moveSpeed;
+				playerThing.img = sprite2Img;
+				sprite = 2;
+			}
+		}
+		if(keycode === 38 || keycode === 16 || keycode === 32) {
 			controls.up = true;
 			jump();
 		}
-		if(keycode === 39) controls.right = true;
+		if(keycode === 39) {
+			controls.right = true;
+			if(!movingRight) {
+				movingRight = true;
+				xSpeed += moveSpeed;
+		 		playerThing.img = sprite1Img;
+		 		sprite = 1;
+		 	}
+		}
 		if(keycode === 40) controls.down = true;
 		if(keycode === 68) controls.d = true;
 	});
 	$(document).keyup(function(event){
 	
 		var keycode = (event.keyCode ? event.keyCode : event.which);
-		if(keycode === 37) controls.left = false;
-		if(keycode === 38 || keycode === 16) {
+		if(keycode === 37) {
+			controls.left = false;
+			if(movingLeft) {
+				movingLeft = false;
+				xSpeed += moveSpeed;
+			}
+		}
+		if(keycode === 38 || keycode === 16 || keycode === 32) {
 			controls.up = false;
 			releaseJump();
 		}
-		if(keycode === 39) controls.right = false;
+		if(keycode === 39) {
+			controls.right = false;
+			if(movingRight) {
+				movingRight = false;
+				xSpeed -= moveSpeed;
+			}
+		}
 		if(keycode === 40) controls.down = false;
 		if(keycode === 68) controls.d = false;	
 	});
@@ -129,13 +153,10 @@ function game(ctx, canvas){
 	 		for(var j = 0; j < height; j++){ 	
 	 			if(!collisionGrid[i + x] || !collisionGrid[i + x][j + y]) {
 	 				//console.log('off the grid! : ' + x + ' ' + y + ' ' + i + ' ' + j);
-	 				//if (j + y > canvasHeight) grounded = true;
 	 				return true;
 	 			}
 	 			if(collisionGrid[i + x][j + y].collision) {
 	 				//console.log('hit a collision! : ' + x + ' ' + y + ' ' + i + ' ' + j);
-	 				//if ()
-	 				//console.log('failed cuz: ', i + x, j+ y);
 	 				return true;
 	 			}
 	 		}
@@ -144,12 +165,12 @@ function game(ctx, canvas){
 	 };
 
 	 var setCollision = function(thing){
-	 	// roundedX = Math.round(thing.x);
-	 	// roundedY = Math.round(thing.y);
+	 	roundedX = Math.round(thing.x);
+	 	roundedY = Math.round(thing.y);
 	 	for(var i = 0; i < thing.width; i++){
 		 	for(var j = 0; j < thing.height; j++){
-		 		if(collisionGrid[i + thing.x] && collisionGrid[i + thing.x][j + thing.y]){
-		 			collisionGrid[i + thing.x][j + thing.y].collision = true;
+		 		if(collisionGrid[i + roundedX] && collisionGrid[i + roundedX][j + roundedY]){
+		 			collisionGrid[i + roundedX][j + roundedY].collision = true;
 		 		}
 		 	}
 	 	}
@@ -229,8 +250,6 @@ function game(ctx, canvas){
 	 };
 
 	 var die = function(){
-	 	xSpeed = 0;
-	 	ySpeed = 0;
 	 	dead = true;
 	 	playerThing.x = -500;
 		playerThing.y = -1000;
@@ -254,6 +273,7 @@ function game(ctx, canvas){
 	 // 	}
 	 // 	return distance + backwards;
 	 // };
+
 	 var ground = function(x, y, width, height){
 	 	y = Math.ceil(y);
 	 	while(!checkCollision(x, y + 1, playerWidth, playerHeight)) {
@@ -264,6 +284,25 @@ function game(ctx, canvas){
 	 	grounded = true;
 	 	ySpeed = 0;
 	 	return y - 1;
+	 };
+
+	 var drawCollisionGrid = function(){
+	 	for(var k = 0; k < worldWidth; k++){
+		 	for(var j = 0; j < worldHeight; j++){
+		 		//give border collision
+		 		// if(k === 0 || k === canvasWidth - 1 || j === 0 || j === canvasHeight - 1){
+		 		// 	row.push({collision:true, death: false});
+		 		// }
+		 		if(collisionGrid[k][j].death){
+		 			ctx.fillStyle = "#000000";
+		 		}
+		 		else if(collisionGrid[k][j].collision) {
+		 			ctx.fillStyle = "#FF0000";
+		 		}
+		 		else ctx.fillStyle = "#FFFFFF";
+				ctx.fillRect(k - camera.x, j - camera.y, 1, 1);
+		 	}
+	 }
 	 };
 
 	 var bonk = function(x, y, width, height){
@@ -280,7 +319,6 @@ function game(ctx, canvas){
 	 	while(!checkCollision(x+1, y, playerWidth, playerHeight)) {
 	 		x++;
 	 	}
-	 	//xSpeed = 0;
 	 	return x;
 	 };
 
@@ -288,7 +326,6 @@ function game(ctx, canvas){
 	 	while(!checkCollision(x-1, y, playerWidth, playerHeight)) {
 	 		x--;
 	 	}
-	 	//xSpeed = 0;
 	 	return x;
 	 };
 
@@ -314,18 +351,15 @@ function game(ctx, canvas){
 		this.y = y;
 		this.width = width;
 		this.height = length;
-		this.collision = true;
-		this.death = false;
 	};
 
 	Thing.prototype.render = function(){
 		drawWithCam(this);
-		//setCollision(this);
 	};
 
 
 	var createThing = function(img, x, y, width, length){
-		newThing = new Thing(img, x, y, width, length);
+		newThing = new Thing(img, x, y, Number(width), Number(length));
 		setCollision(newThing);
 		things.push(newThing);
 	};
@@ -346,19 +380,18 @@ function game(ctx, canvas){
 				things.splice(i, 1);
 			}
 		}
-		spikes = spikes.filter(function(spike){
-			if(clickX > spike.x && clickX < spike.x + Number(spike.width) &&
-			clickY > spike.y && clickY < spike.y + Number(spike.height)){
-				return false;
+		for(i = spikes.length - 1; i >=0; i--) {
+			if(clickX > spikes[i].x && clickX < spikes[i].x + Number(spikes[i].width) &&
+			clickY > spikes[i].y && clickY < spikes[i].y + Number(spikes[i].height)){
+				spikes.splice(i, 1);
 			}
-			return true;
-		});
+		}
 		resetCollision();
 	};
 
 	canvas.addEventListener('mousedown', function (e) {
-		var clickX = e.pageX - this.offsetLeft;
-		var clickY = e.pageY - this.offsetTop;
+		var clickX = e.x - this.offsetLeft - Math.round(canvas.getBoundingClientRect().left);
+		var clickY = e.y - this.offsetTop - Math.round(canvas.getBoundingClientRect().top);
 		console.log(clickX, clickY);
 		if(!controls.d){
 			var width = selectedImg.getAttribute('width');
@@ -372,8 +405,8 @@ function game(ctx, canvas){
 		        socket.emit('newThing', {img: $(selectedImg).prop('outerHTML'), x: clickX + camera.x - Math.round(width/2), y: clickY + camera.y - Math.round(height/2), width: selectedImg.getAttribute('width'), height: selectedImg.getAttribute('height')});	
 			}
 		}else{
-			socket.emit('delete', {clickX: clickX, clickY: clickY});
-			deleteStuff(clickX, clickY);
+			socket.emit('delete', {clickX: clickX + camera.x, clickY: clickY + camera.y});
+			deleteStuff(clickX + camera.x, clickY + camera.y);
 		}
     });
 
@@ -382,27 +415,24 @@ function game(ctx, canvas){
 	playerThing = new Thing(sprite1Img, spawnX, spawnY, playerWidth, playerHeight);
 
 	 var nextFrame = function(x, y){
+	 	//var start = new Date();
 	 	var newX = playerThing.x;
 	 	var newY = playerThing.y;
-
-	 	//gravityCounter++;
-
-	 	//if(gravityCounter >= 10000) gravityCounter = 0;
 
 	 	//take away player collision for collision checks
 		//clearCollision(x, y, playerWidth, playerHeight);
 
 	 	//allow player to move left or right
-	 	if(controls.right) {
-	 		xSpeed += moveSpeed;
-	 		playerThing.img = sprite1Img;
-	 		sprite = 1;
-	 	}
-	 	if(controls.left) {
-	 		xSpeed -= moveSpeed;
-			playerThing.img = sprite2Img;
-			sprite = 2;
-	 	}
+	 	// if(controls.right) {
+	 	// 	xSpeed += moveSpeed;
+	 	// 	playerThing.img = sprite1Img;
+	 	// 	sprite = 1;
+	 	// }
+	 	// if(controls.left) {
+	 	// 	xSpeed -= moveSpeed;
+			// playerThing.img = sprite2Img;
+			// sprite = 2;
+	 	// }
 
 	 	//if(xSpeed !== 0) newX += moveX(x, y, playerWidth, playerHeight);
 
@@ -418,6 +448,8 @@ function game(ctx, canvas){
 	 	}
 
 	 	falling = (ySpeed > 0);
+	 	rising = (ySpeed < 0);
+
 
 		grounded = checkCollision(playerThing.x, playerThing.y + 1, playerWidth, playerHeight);
 	 	if(falling){	
@@ -427,7 +459,7 @@ function game(ctx, canvas){
 		 		//console.log('nope');
 		 	}
 	 		//console.log(ySpeed);
-	 	}else{
+	 	}else if(rising){
 	 		if(checkCollision(newX, playerThing.y + ySpeed, playerWidth, playerHeight)) {
 	 			newY = bonk(newX, playerThing.y, playerWidth, playerHeight);
 		 		//console.log('nope');
@@ -435,7 +467,6 @@ function game(ctx, canvas){
 	 	}
 	 	if(!grounded) {
 	 		ySpeed += gravity;
-	 		hasJump = false;
 	 	}
 
 	 	newY += ySpeed;
@@ -443,9 +474,7 @@ function game(ctx, canvas){
 		//sidescrolling
 		moveCam(newX);
 
-		//console.log(camera);
 		//camera.x = newX - canvasWidth/2;
-
 
 		playerThing.x = newX;
 		playerThing.y = newY;
@@ -471,13 +500,23 @@ function game(ctx, canvas){
 
 	 	drawWithCam(playerThing);
 	 	if(newX !== x || newY !== y) socket.emit('move', {sprite: sprite,id: socket.id, x: newX, y: newY});
-		xSpeed = 0;
+		//xSpeed = 0;
 		if(checkDeath(newX, newY)){
 			die();
 		}
-	 	setTimeout(nextFrame, 16);
+		FPS_Counter++;
+		requestAnimationFrame(nextFrame);
+	 	//setTimeout(nextFrame, 16 - (new Date() - start));
+	 	//drawCollisionGrid();
 	 };
-	 nextFrame();
+	var FPS_Counter = 0;
+	nextFrame();
+	//drawCollisionGrid();
+	setInterval(function(){
+		$('#FPS-time').html(FPS_Counter);
+		FPS_Counter = 0;
+	}, 1000);
+	
 
 
 
@@ -540,6 +579,5 @@ function game(ctx, canvas){
 	    	}
 
 	    });
-	    //send in data
 	});
 }

@@ -1,6 +1,4 @@
     var kidImg = $('<img id="kid" src="/images/guy.png">')[0];
-    var jess2Img = $('<img id="jess2" src="/images/jess2.png">')[0];
-    var jessImg = $('<img id="jess" src="/images/jess.png">')[0];
     var screamImg = $('<img id="scream" src="/images/box.png">')[0];
     var blockImg = $('<img id="block" src="/images/block.png">')[0];
     var backgroundImg = $('<img id="background" src="/images/background.png">')[0];
@@ -11,12 +9,27 @@
     var selectImg = function(img){
     	selectedImg = img;
     };
+    var toggleMute = function(){
+        console.log($('.audio').prop('muted'));
+        if($('.audio').prop('muted')){
+            $('#unmute').hide();
+            $('#mute').show();
+            $('.audio').prop('muted', false);
+        }
+        else{
+            $('#unmute').show();
+            $('#mute').hide();
+            $('.audio').prop('muted', true);
+        }
+    };
 window.onload = function() {
 	$('#loader').hide();
+    $('#unmute').hide();
 	$('#respawn').hide();
 	$('#wrapper').show();
-	$('.audio').prop('volume', 0.1);
-	$('#doublejump').prop('volume', 0.16);
+	$('#jump').prop('volume', 0.015);
+    $('#marine').prop('volume', 0.08);
+	$('#doublejump').prop('volume', 0.025);
     var canvas = document.getElementById("canvas");
     var ctx = canvas.getContext("2d");
     //console.log(kidImg);	

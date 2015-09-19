@@ -82,13 +82,12 @@ io.on('connection', function(socket){
           things.splice(i, 1);
         }
       }
-      spikes = spikes.filter(function(spike){
-        if(clickX > spike.x && clickX < spike.x + Number(spike.width) &&
-        clickY > spike.y && clickY < spike.y + Number(spike.height)){
-          return false;
+      for(i = spikes.length - 1; i >=0; i--) {
+        if(clickX > spikes[i].x && clickX < spikes[i].x + Number(spikes[i].width) &&
+        clickY > spikes[i].y && clickY < spikes[i].y + Number(spikes[i].height)){
+          spikes.splice(i, 1);
         }
-        return true;
-      });
+      }
       socket.broadcast.emit('delete', click);
     });
 
