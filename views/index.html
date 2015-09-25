@@ -4,9 +4,20 @@
 		<title>game-thing</title>
 		<link rel="stylesheet" href="/stylesheets/style.css">
 	</head>
-	<body>
-		<img id="loader" src="/images/webSpinner.gif">
-		<div id='wrapper' hidden='true'>
+	<body background="/images/page_background.jpg">
+		<div class='header'>
+			<h1>Untitled</h1>
+		</div>
+
+		<div class='loading-container'>
+			<div class='loading'>
+				<p>Loading...</p>
+			</div>
+			<div class='loader'>
+			</div>		
+		</div>
+<!-- 		<img id="loader" src="/images/loader.gif"> -->
+		<div id='wrapper' class='post-load' hidden='true'>
 			<canvas id="canvas" width="960" height="640" style="border:1px solid #000000;">
 			Your browser does not support the HTML5 canvas tag.
 			</canvas>
@@ -34,6 +45,8 @@
 				</div>
 			</div>
 		</div>
+		<button class='auto post-load' hidden>Jesus take the wheel</button>
+		<button class='friend post-load' hidden>Friend maker</button>
 			<audio id='marine' class="audio" controls hidden='true'> 
   				<source src="sounds/marine.wav" type="audio/wav">
 			</audio>
@@ -43,6 +56,7 @@
 			<audio id='doublejump' class="audio" controls hidden='true'> 
   				<source src="sounds/doublejump.mp3" type="audio/mpeg">
 			</audio>
+			<script src="/node_modules/spin/dist/spin.min.js"></script>
 			<script src="/bower_components/jquery/dist/jquery.min.js"></script>
 	 		<script src="/bower_components/angular/angular.min.js"></script>
 	 		<script src="socket.io/socket.io.js"></script>

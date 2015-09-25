@@ -21,6 +21,7 @@ function game(ctx, canvas){
 	rising = false,
 	spawnX = 70,
 	spawnY = 384,
+	friendSpawn = {x: 1, y: worldHeight - playerHeight},
 	others = [],
 	things = [],
 	spikes = [],
@@ -28,14 +29,18 @@ function game(ctx, canvas){
 	movingLeft = false,
 	movingRight = false,
 	sprite = 1,
+	playing = true,
 	spriteMap = {
 		1: sprite1Img,
-		2: sprite2Img
+		2: sprite2Img,
+		kidImg: $('<img id="kid" src="/images/guy.png">')[0],
+    	screamImg: $('<img id="scream" src="/images/box.png">')[0],
+    	blockImg: $('<img id="block" src="/images/block.png">')[0],
+    	backgroundImg: $('<img id="background" src="/images/background.png">')[0],
+    	spikeImg: $('<img id="spike" src="/images/spike.png" width="50" height="70">')[0],
+   		sprite1Img: $('<img id="sprite1" src="/images/sprite1.png">')[0],
+   		sprite2Img: $('<img id="sprite2" src="/images/sprite2.png">')[0],
 	};
-
-	function direction(){
-		Math.atan2(xSpeed, ySpeed);
-	}
 
 	//initialize controls
 	var controls = {
@@ -51,7 +56,7 @@ function game(ctx, canvas){
 			$("#jump").prop("currentTime", 0);
 			$("#jump").trigger('play');
 		 	jumping = true;
-		 	ySpeed -= jumpStrength;
+		 	ySpeed = -jumpStrength;
 		 	hasJump = false;
 		}else if(hasDoubleJump && !jumping){
 			$("#doublejump").prop("currentTime", 0);
@@ -86,7 +91,7 @@ function game(ctx, canvas){
 			if(!movingLeft){
 				movingLeft = true;
 				xSpeed -= moveSpeed;
-				playerThing.img = sprite2Img;
+				player.img = sprite2Img;
 				sprite = 2;
 			}
 		}
@@ -99,7 +104,7 @@ function game(ctx, canvas){
 			if(!movingRight) {
 				movingRight = true;
 				xSpeed += moveSpeed;
-		 		playerThing.img = sprite1Img;
+		 		player.img = sprite1Img;
 		 		sprite = 1;
 		 	}
 		}
@@ -251,12 +256,12 @@ function game(ctx, canvas){
 
 	 var die = function(){
 	 	dead = true;
-	 	playerThing.x = -500;
-		playerThing.y = -1000;
+	 	player.x = -500;
+		player.y = -1000;
 		countdown(5);
 		setTimeout(function(){
-			playerThing.x = spawnX;
-			playerThing.y = spawnY;
+			player.x = spawnX;
+			player.y = spawnY;
 		}, 5000);
 		camera.x = 0;
 		camera.y = 0;
@@ -275,15 +280,20 @@ function game(ctx, canvas){
 	 // };
 
 	 var ground = function(x, y, width, height){
-	 	y = Math.ceil(y);
+	 	y = Math.floor(y);
 	 	while(!checkCollision(x, y + 1, playerWidth, playerHeight)) {
 	 		y++;
+	 	}
+	 	if(checkCollision(x, y, playerWidth, playerHeight)){
+	 		while(checkCollision(x, y, playerWidth, playerHeight)) {
+		 		y--;
+		 	}
 	 	}
 	 	hasJump = true;
 		hasDoubleJump = true;
 	 	grounded = true;
 	 	ySpeed = 0;
-	 	return y - 1;
+	 	return y;
 	 };
 
 	 var drawCollisionGrid = function(){
@@ -330,10 +340,11 @@ function game(ctx, canvas){
 	 };
 
 	 function drawWithCam(thing){
-	 	ctx.drawImage(thing.img, thing.x - camera.x, thing.y - camera.y, thing.width, thing.height);
+	 	var img = typeof thing.img === 'string' ? spriteMap[thing.img] : thing.img;
+	 	ctx.drawImage(img, thing.x - camera.x, thing.y - camera.y, thing.width, thing.height);
 	 }
 
-	 function moveCam(x){
+	 function moveCam(x, y){
 	 	if(x - camera.x > 0.80*canvasWidth) {
 	 		if(camera.x + (x - camera.x) - 0.80*canvasWidth <= worldWidth - canvasWidth) 
 	 			camera.x += (x - camera.x) - 0.80*canvasWidth;
@@ -342,7 +353,6 @@ function game(ctx, canvas){
 			if(camera.x + (x - camera.x) - 0.20*canvasWidth >= 0) 
 				camera.x += (x - camera.x) - 0.20*canvasWidth;
 		}
-		//camera.x = newX - canvasWidth/2;
 	 }
 
 	var Thing = function(img, x, y, width, length){
@@ -365,13 +375,15 @@ function game(ctx, canvas){
 	};
 
 
-	createSpike(spikeImg, 810, 570);
-	createSpike(spikeImg, 860, 570);
-	createSpike(spikeImg, 910, 570);
-	createSpike(spikeImg, 960, 570);
-	createThing(blockImg, 655, 420, 50, 40);
-	createThing(blockImg, 58, 498, 50, 40);
-	createThing(screamImg, 600, 540, 100, 100);
+	// createSpike(spikeImg, 810, 570);
+	// createSpike(spikeImg, 860, 570);
+	// createSpike(spikeImg, 910, 570);
+	// createSpike(spikeImg, 960, 570);
+	// createThing('screamImg', 600, 540, 100, 100);
+	// createThing('blockImg', 58, 498, 50, 40);
+	// createThing('blockImg', 455, worldHeight - 493, 50, 40);
+	// createThing('blockImg', 655, 420, 50, 40);
+
 
 	var deleteStuff = function(clickX, clickY){
 		for(var i = things.length - 1; i >=0; i--) {
@@ -412,73 +424,74 @@ function game(ctx, canvas){
 
 	backgroundThing = new Thing(backgroundImg, 0, 0, worldWidth, worldHeight);
 	kidThing = new Thing(kidImg, spawnX, spawnY, playerWidth, playerHeight);
-	playerThing = new Thing(sprite1Img, spawnX, spawnY, playerWidth, playerHeight);
+	player = new Thing(sprite1Img, spawnX, spawnY, playerWidth, playerHeight);
 
-	 var nextFrame = function(x, y){
+	 var nextFrame = function(){
 	 	//var start = new Date();
-	 	var newX = playerThing.x;
-	 	var newY = playerThing.y;
+	 	if(playing){
 
-	 	//take away player collision for collision checks
-		//clearCollision(x, y, playerWidth, playerHeight);
+		 	var newX = player.x;
+		 	var newY = player.y;
 
-	 	//allow player to move left or right
-	 	// if(controls.right) {
-	 	// 	xSpeed += moveSpeed;
-	 	// 	playerThing.img = sprite1Img;
-	 	// 	sprite = 1;
-	 	// }
-	 	// if(controls.left) {
-	 	// 	xSpeed -= moveSpeed;
-			// playerThing.img = sprite2Img;
-			// sprite = 2;
-	 	// }
+		 	//take away player collision for collision checks
+			//clearCollision(x, y, playerWidth, playerHeight);
 
-	 	//if(xSpeed !== 0) newX += moveX(x, y, playerWidth, playerHeight);
+		 	//allow player to move left or right
+		 	// if(controls.right) {
+		 	// 	xSpeed += moveSpeed;
+		 	// 	player.img = sprite1Img;
+		 	// 	sprite = 1;
+		 	// }
+		 	// if(controls.left) {
+		 	// 	xSpeed -= moveSpeed;
+				// player.img = sprite2Img;
+				// sprite = 2;
+		 	// }
 
-	 	newX = playerThing.x + xSpeed;
+		 	//if(xSpeed !== 0) newX += moveX(x, y, playerWidth, playerHeight);
 
-	 	if(xSpeed !== 0 && checkCollision(newX, playerThing.y, playerWidth, playerHeight)) {
-	 		if(xSpeed > 0) {
-	 			newX = hugRight(playerThing.x, playerThing.y, playerWidth, playerHeight);
-	 		}
-	 		else {
-	 			newX = hugLeft(playerThing.x, playerThing.y, playerWidth, playerHeight);
-	 		}
-	 	}
+		 	newX = player.x + xSpeed;
 
-	 	falling = (ySpeed > 0);
-	 	rising = (ySpeed < 0);
-
-
-		grounded = checkCollision(playerThing.x, playerThing.y + 1, playerWidth, playerHeight);
-	 	if(falling){	
-		 	//check and fix if falling would cause collision
-		 	if(checkCollision(newX, playerThing.y + ySpeed, playerWidth, playerHeight)) {
-		 		newY = ground(newX, playerThing.y, playerWidth, playerHeight);
-		 		//console.log('nope');
+		 	if(xSpeed !== 0 && checkCollision(newX, player.y, playerWidth, playerHeight)) {
+		 		if(xSpeed > 0) {
+		 			newX = hugRight(player.x, player.y, playerWidth, playerHeight);
+		 		}
+		 		else {
+		 			newX = hugLeft(player.x, player.y, playerWidth, playerHeight);
+		 		}
 		 	}
-	 		//console.log(ySpeed);
-	 	}else if(rising){
-	 		if(checkCollision(newX, playerThing.y + ySpeed, playerWidth, playerHeight)) {
-	 			newY = bonk(newX, playerThing.y, playerWidth, playerHeight);
-		 		//console.log('nope');
-		 	}
-	 	}
-	 	if(!grounded) {
-	 		ySpeed += gravity;
-	 	}
 
-	 	newY += ySpeed;
+		 	falling = (ySpeed > 0);
+		 	rising = (ySpeed < 0);
+
+
+			grounded = checkCollision(player.x, player.y + 1, playerWidth, playerHeight);
+		 	if(falling){	
+			 	//check and fix if falling would cause collision
+			 	if(checkCollision(newX, player.y + ySpeed, playerWidth, playerHeight)) {
+			 		newY = ground(newX, player.y, playerWidth, playerHeight);
+			 		//console.log('nope');
+			 	}
+		 		//console.log(ySpeed);
+		 	}else if(rising){
+		 		if(checkCollision(newX, player.y + ySpeed, playerWidth, playerHeight)) {
+		 			newY = bonk(newX, player.y, playerWidth, playerHeight);
+			 		//console.log('nope');
+			 	}
+		 	}
+		 	if(!grounded) {
+		 		ySpeed += gravity;
+		 	}
+		 	newY += ySpeed;
+
+			//camera.x = newX - canvasWidth/2;
+
+			player.x = newX;
+			player.y = newY;
+	 	}
 
 		//sidescrolling
-		moveCam(newX);
-
-		//camera.x = newX - canvasWidth/2;
-
-		playerThing.x = newX;
-		playerThing.y = newY;
-		//console.log(newY);
+		moveCam(player.x);
 
 	 	ctx.clearRect(0, 0, 960, 640);
 
@@ -494,12 +507,11 @@ function game(ctx, canvas){
 
 
 	 	others.forEach(function(other){
-	 		//console.log(spriteMap[other.sprite]);
 	 		if(other) drawWithCam({img: spriteMap[other.sprite], x: other.x, y: other.y, width: playerWidth, height: playerHeight});
 	 	});
 
-	 	drawWithCam(playerThing);
-	 	if(newX !== x || newY !== y) socket.emit('move', {sprite: sprite,id: socket.id, x: newX, y: newY});
+	 	drawWithCam(player);
+	 	if(newX !== player.x || newY !== player.y) socket.emit('move', {sprite: sprite,id: socket.id, x: newX, y: newY});
 		//xSpeed = 0;
 		if(checkDeath(newX, newY)){
 			die();
@@ -580,4 +592,81 @@ function game(ctx, canvas){
 
 	    });
 	});
+
+	auto = function(){
+		if(playing){
+			playing = false;
+
+			var ai = new Worker('/javascripts/AI.js');
+
+			ai.postMessage({
+				player: {
+					x: player.x,
+					y: player.y
+				},
+				things: things.map(function(thing){
+					return {
+						x: thing.x,
+						y: thing.y,
+						width: thing.width,
+						height: thing.height
+					};
+				})
+			});
+
+			ai.addEventListener('message', function(e){
+				if(e.data.x < player.x) {
+					player.img = sprite2Img;
+					sprite = 2;
+				}
+				if(e.data.x > player.x) {
+					player.img = sprite1Img;
+					sprite = 1;
+				}
+				player.x = e.data.x;
+				player.y = e.data.y;
+			});
+		}
+	};
+
+	var friend = function(){
+
+			var ai = new Worker('/javascripts/AI.js');
+
+			var playerNumber = others.length;
+
+			others.push({sprite: 1, x: -5000, y: -5000});
+
+			ai.postMessage({
+				player: {
+					x: player.x,
+					y: player.y
+				},
+				things: things.map(function(thing){
+					return {
+						x: thing.x,
+						y: thing.y,
+						width: thing.width,
+						height: thing.height
+					};
+				})
+			});
+
+			ai.addEventListener('message', function(e){
+				if(e.data.x < others[playerNumber].x) {
+					others[playerNumber].sprite = '2';
+				}
+				if(e.data.x > others[playerNumber].x) {
+					others[playerNumber].sprite = '1';
+				}
+				others[playerNumber].x = e.data.x;
+				others[playerNumber].y = e.data.y;
+			});
+	};
+
+	$('.friend').click(friend);
+	$('.auto').click(auto);
+
+	$('.loading-container').hide();
+	$('.post-load').show();
 }

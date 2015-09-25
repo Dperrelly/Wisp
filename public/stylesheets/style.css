@@ -2,18 +2,15 @@ body {
   font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
   margin: 0;
   padding: 0;
+  text-align: center;
 }
 
 a {
   color: #00B7FF;
 }
 
-div {
-/*	position: absolute;
-	left: 10px; 
-	top: 10px; 
-	width:200px; 
-	height:100px; */
+.auto {
+	margin: 7px;
 }
 
 canvas { 
@@ -22,6 +19,10 @@ canvas {
 	left: 0;
 	align: center;
 	margin: auto;
+	border-style: solid;
+	border-width: 10px;
+	border-radius: 5px;
+	border-color: black;
 }
 
 #wrapper {
@@ -31,11 +32,13 @@ canvas {
 	height: 640px;
 }
 
-#loader {
-	display: block;
-	margin: 0 auto;
-	width: 960px;
-	height: 640px;
+.loader {
+	margin-left: 50%;
+	margin-top: 50px;
+}
+
+.loading {
+	text-align: center;
 }
 
 #top{
@@ -106,4 +109,8 @@ canvas {
 .mute{
 	width: 20px;
 	height: 20px;
+}
+
+.header {
+	text-align: center;
 }

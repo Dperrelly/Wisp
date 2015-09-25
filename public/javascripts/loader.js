@@ -22,16 +22,19 @@
             $('.audio').prop('muted', true);
         }
     };
+    var spinner = new Spinner().spin();
+    $('.loader').append(spinner.el);
+    var ai = new Worker('/javascripts/AI.js');
+
+    
+
 window.onload = function() {
-	$('#loader').hide();
     $('#unmute').hide();
-	$('#respawn').hide();
-	$('#wrapper').show();
-	$('#jump').prop('volume', 0.015);
+    $('#respawn').hide();
+	$('#jump').prop('volume', 0.15);
     $('#marine').prop('volume', 0.08);
-	$('#doublejump').prop('volume', 0.025);
+	$('#doublejump').prop('volume', 0.25);
     var canvas = document.getElementById("canvas");
     var ctx = canvas.getContext("2d");
-    //console.log(kidImg);	
     game(ctx, canvas);
 };
