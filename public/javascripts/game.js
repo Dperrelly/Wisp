@@ -25,6 +25,7 @@ function game(ctx, canvas){
 	others = [],
 	things = [],
 	spikes = [],
+	AIs = [],
 	dead = false,
 	movingLeft = false,
 	movingRight = false,
@@ -386,6 +387,16 @@ function game(ctx, canvas){
 
 
 	var deleteStuff = function(clickX, clickY){
+
+		AIs.forEach(function(ai){
+			ai.postMessage({
+				deleteThing: {
+					x: clickX,
+					y: clickY,
+				}
+			});
+		});
+
 		for(var i = things.length - 1; i >=0; i--) {
 			if(clickX > things[i].x && clickX < things[i].x + Number(things[i].width) &&
 			clickY > things[i].y && clickY < things[i].y + Number(things[i].height)){
@@ -662,6 +673,8 @@ function game(ctx, canvas){
 				others[playerNumber].x = e.data.x;
 				others[playerNumber].y = e.data.y;
 			});
+
+			AIs.push(ai);
 	};
 
 	$('.friend').click(friend);

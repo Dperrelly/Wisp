@@ -43,10 +43,11 @@
 	jumpCallback = null,
 	maxJumping = false,
 	idle = false,
-	idleCounter = 0,
-	callback = null;
+	attempedBlock = 0;
+	idleCounter = 0;
 
-	console.log("ddr max", movingJumpTheta);
+
+	// console.log("ddr max", movingJumpTheta);
 
 	//initialize controls
 	var controls = {
@@ -114,18 +115,12 @@
 		if(cb) jumpCallback = cb;
 	};
 
-	// setInterval(function(){
-	//  	maxJump();
-	//  	//walkTo(300);
-	//  }, 5000);
-
 	var walkTo = function(x, cb){
 		console.log('trying to walk to', x);
 		stopMoving();
 		destination = x;
 		if(x < player.x) pressLeft();
 		if(x > player.x) pressRight();
-		if(cb)callback = cb;
 	};
 
 	var jumpTo = function(x, cb){
@@ -133,62 +128,66 @@
 		maxJump();
 	};
 
+	function straightJump(x){
+		maxJump(function(){
+			walkTo(x);
+		});
+	}
+
 	var jumpToBlock = function(block){
-			if(player.x < block.x) walkTo(block.x - 1, function(){
-				//console.log('firin callback');
-				jumpTo(block.x, stopMoving);
-			});
-			if(player.x > block.x) walkTo(block.x + block.width + 1, function(){
-				//console.log('firin callback');
-				jumpTo(block.x + block.width - 1, stopMoving);
-			});
-				currentBlock = block;
+		console.log('jumping to', block);
+		if(testJump(function(){
+				if(player.x < block.x) jumpTo(block.x);
+				else jumpTo(block.x + block.width - 1);
+			}, [], block)){
+			if(player.x < block.x) jumpTo(block.x);
+			else jumpTo(block.x + block.width - 1);
+			currentBlock = block;
+		}
+		else if( testJump(function(){
+			straightJump();
+		}, [findCornerX(block)], block) ){
+		}
+			straightJump(findCornerX(block));
+
 	};
 
 	var approachBlock = function(block){
 		console.log(block);
 		if(block.y > worldHeight - maxJumpHeight){
-			var dest;
-			if(player.x < block.x) walkTo(block.x - moveSpeed, function(){
-				//console.log('firin callback');
-				maxJump(function(){
-					walkTo(block.x, stopMoving());
-				});
-			});
-			if(player.x > block.x) walkTo(block.x + moveSpeed + block.width, function(){
-				//console.log('firin callback');
-				maxJump(function(){
-					walkTo(block.x + block.width - 1, stopMoving());
-				});
-			});
+			if( Math.abs(player.x - findCornerX(block)) < 100) {
+				straightJump(findCornerX(block));
+				attempedBlock++;
+			}else{
+				if(player.x < block.x) walkTo(block.x - moveSpeed);
+				if(player.x > block.x) walkTo(block.x + moveSpeed + block.width);
+			}
+			currentBlock = block;	
 		}
-		currentBlock = block;
 	};
 
 	var think = function(){
 		console.log('thinking...');
 		callback = null;
 		destination = null;
-		if(currentBlock === floorBlock) {
-			approachBlock(things[0]);
+		if(worldHeight - player.y === playerHeight) {
+			approachBlock(things[attempedBlock]);
 			// for(var i = 0; i < things.length; i++){
-			// 	if(test(approachBlock, [things[0]])){
+			// 	if(testJump(approachBlock, [things[0]])){
 
 			// 	}
 			// }
 		}
 		else{
-			jumpToBlock(things[1]);
+			var inRange = [];
+			for(var i=0; i < things.length; i++){
+				if(things[i] !== currentBlock && isBlockInRange(currentBlock, things[i])){
+					inRange.push(things[i]);
+				}
+			}
+			sortByY(inRange);
+			jumpToBlock(inRange[inRange.length - 1]);
 		}
-		// else{
-		// 	for(var i=0; i < things.length; i++){
-		// 		if(things[i] !== currentBlock && isBlockInRange(currentBlock, things[i])){
-		// 			console.log(things[i]);
-		// 			jumpTo(things[i]);
-		// 			break;
-		// 		}
-		// 	}
-		// }
 
 	};
 
@@ -206,6 +205,14 @@
 	};
 
 	var isBlockInRange = function(currentBlock, targetBlock){
+		if(!currentBlock){
+			currentBlock = {
+				x: player.x,
+				y: player.y - playerHeight,
+				width: 1,
+				height: 1
+			};
+		}
 		if(Math.abs(currentBlock.y - targetBlock.y) > maxJumpHeight) return false;
 		var currentX;
 		var targetBlockX;
@@ -416,10 +423,32 @@
 		things.push(newThing);
 	};
 
-	var test = function(func, args, targetDest){
+	var findCornerX = function(block){
+		if(player.x < block.x) return block.x;
+		else return block.x + block.width - 1;
+	};
+
+	var deleteStuff = function(clickX, clickY){
+		for(var i = things.length - 1; i >=0; i--) {
+			if(clickX > things[i].x && clickX < things[i].x + Number(things[i].width) &&
+			clickY > things[i].y && clickY < things[i].y + Number(things[i].height)){
+				things.splice(i, 1);
+			}
+		}
+		resetCollision();
+	};
+
+	var testJump = function(func, args, targetBlock){
 
 		var result;
 		var simFramesCalculated = 0;
+
+		targetDest = {
+			x: findCornerX(targetBlock),
+			y: targetBlock.y
+		};
+
+		console.log(targetDest);
 
 		var state = {
 			playerX: player.x,
@@ -437,7 +466,6 @@
 			targetJumpFrames: targetJumpFrames,
 			jumpFrames: jumpFrames,
 			maxJumping: maxJumping,
-			callback: callback,
 			currentBlock: currentBlock
 		};
 
@@ -464,7 +492,6 @@
 		 	 	player.x + playerWidth > destination){
 		 			//console.log('arrived');
 		 			stopMoving();
-		 			if(callback) callback();
 		 			//console.log(destination);
 		 	}
 
@@ -540,7 +567,6 @@
 		jumpFrames = state.jumpFrames;
 		maxJumping = state.maxJumping;
 		currentBlock = state.currentBlock;
-		callback = state.callback;
 		return result;
 	 };
 
@@ -625,7 +651,7 @@
 		if(player.x === newX && player.y === newY && !idle){
 			idleCounter++;
 			console.log('counting');
-			if(idleCounter > 100){
+			if(idleCounter > 5){
 				idle = true;
 				think();
 			}
@@ -666,15 +692,17 @@
 	  	things.forEach(function(thing){
 	  		setCollision(thing);
 	  	});
-	  	setTimeout(function(){
+	  	// setTimeout(function(){
 	  		//console.log(things);
-			think();
 			// console.log(isBlockInRange(things[0], things[1]));
 			// console.log(isBlockInRange(things[1], things[2]));
-		}, 1000);
+		// }, 1000);
 	  }
 	  if(e.data.newThing){
 
+	  }
+	  if(e.data.deleteThing){
+	  	deleteStuff(e.data.deleteThing.x, e.data.deleteThing.y);
 	  }
 	  console.log(e);
 	}, false);
