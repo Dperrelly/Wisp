@@ -1,6 +1,7 @@
 	// importScripts('/bower_components/jquery/dist/jquery.min.js');
 
-	var canvasWidth = 960,
+	var alive = true,
+	canvasWidth = 960,
 	canvasHeight = 640,
 	worldWidth = 1500,
 	worldHeight = 640,
@@ -27,6 +28,7 @@
 	player = {x:1, y:1},
 	floorBlock = {x: 0, y: worldHeight, width: worldWidth, height: worldHeight},
 	currentBlock = floorBlock,
+	lastBlock = null,
 	dead = false,
 	hasJump = true,
 	hasDoubleJump = true,
@@ -43,7 +45,7 @@
 	jumpCallback = null,
 	maxJumping = false,
 	idle = false,
-	attempedBlock = 0;
+	attempedBlock = 0,
 	idleCounter = 0;
 
 
@@ -136,59 +138,79 @@
 
 	var jumpToBlock = function(block){
 		console.log('jumping to', block);
-		if(testJump(function(){
-				if(player.x < block.x) jumpTo(block.x);
-				else jumpTo(block.x + block.width - 1);
-			}, [], block)){
-			if(player.x < block.x) jumpTo(block.x);
-			else jumpTo(block.x + block.width - 1);
+		if(isBlockInRange(currentBlock, block)){
+			if(player.x < block.x) {
+				jumpTo(block.x);
+				console.log('jumping right');
+			}
+			else {
+				jumpTo(block.x + block.width - 1);
+				console.log('jumping left');
+			}
 			currentBlock = block;
 		}
-		else if( testJump(function(){
-			straightJump();
-		}, [findCornerX(block)], block) ){
-		}
+		else if( testJump(function(){straightJump(); }, 
+					[findCornerX(block)], block) ){
+			console.log('straightJump');
 			straightJump(findCornerX(block));
+		}
+		console.log('i cant jump there');
+	};
 
+	var underOrOver = function(block){
+		if((player.x + playerWidth > block.x) && (player.x < block.x + block.width)) return true;
+		else return false;
 	};
 
 	var approachBlock = function(block){
-		console.log(block);
+		console.log('approaching', block);
 		if(block.y > worldHeight - maxJumpHeight){
-			if( Math.abs(player.x - findCornerX(block)) < 100) {
+			if( Math.abs(player.x - findCornerX(block)) < 50 && !underOrOver(block)) {
+				console.log('i can do this');
 				straightJump(findCornerX(block));
-				attempedBlock++;
+				//attempedBlock++;
+				currentBlock = block;	
 			}else{
-				if(player.x < block.x) walkTo(block.x - moveSpeed);
-				if(player.x > block.x) walkTo(block.x + moveSpeed + block.width);
+				if(player.x + playerWidth < block.x) {
+					walkTo(block.x - moveSpeed);
+					console.log('im left');
+				}
+				else if(player.x > block.x + block.width) {
+					walkTo(block.x + moveSpeed + block.width);
+					console.log('im right');
+				}
+				else {
+					walkTo(block.x - moveSpeed - playerWidth);
+					console.log('im under');
+				}
 			}
-			currentBlock = block;	
 		}
 	};
 
 	var think = function(){
-		console.log('thinking...');
-		callback = null;
-		destination = null;
-		if(worldHeight - player.y === playerHeight) {
-			approachBlock(things[attempedBlock]);
-			// for(var i = 0; i < things.length; i++){
-			// 	if(testJump(approachBlock, [things[0]])){
+		if(things.length){
+			console.log('thinking...');
+			callback = null;
+			destination = null;
+			if(worldHeight - player.y === playerHeight) {
+				approachBlock(things[attempedBlock]);
+				// for(var i = 0; i < things.length; i++){
+				// 	if(testJump(approachBlock, [things[0]])){
 
-			// 	}
-			// }
-		}
-		else{
-			var inRange = [];
-			for(var i=0; i < things.length; i++){
-				if(things[i] !== currentBlock && isBlockInRange(currentBlock, things[i])){
-					inRange.push(things[i]);
-				}
+				// 	}
+				// }
 			}
-			sortByY(inRange);
-			jumpToBlock(inRange[inRange.length - 1]);
+			else{
+				var inRange = [];
+				for(var i=0; i < things.length; i++){
+					if(things[i] !== currentBlock && isBlockInRange(currentBlock, things[i])){
+						inRange.push(things[i]);
+					}
+				}
+				sortByY(inRange);
+				jumpToBlock(inRange[inRange.length - 1]);
+			}		
 		}
-
 	};
 
 	var edge = function(block){
@@ -425,7 +447,7 @@
 
 	var findCornerX = function(block){
 		if(player.x < block.x) return block.x;
-		else return block.x + block.width - 1;
+		else return block.x + block.width - moveSpeed;
 	};
 
 	var deleteStuff = function(clickX, clickY){
@@ -447,8 +469,6 @@
 			x: findCornerX(targetBlock),
 			y: targetBlock.y
 		};
-
-		console.log(targetDest);
 
 		var state = {
 			playerX: player.x,
@@ -585,6 +605,7 @@
 	 		doubleJumpFrames++;
 	 		if(doubleJumpFrames === maxDoubleJumpFrames){
 	 			jumpCallback();
+	 			doubleJumpFrames = 0;
 	 			jumpCallback = null;
 	 		}
 	 	}
@@ -665,7 +686,7 @@
 		player.y = newY;
 
 
-		setTimeout(nextFrame, 16 - (new Date() - start));
+		if(alive) setTimeout(nextFrame, 16 - (new Date() - start));
 	 };
 
 	function compareY(a,b) {
@@ -684,14 +705,13 @@
 	self.addEventListener('message', function(e) {
 	  if(e.data.player) {
 	  	player = e.data.player;
+	  	alive = true;
 	  	nextFrame();
 	  }
 	  if(e.data.things){
 	  	things = e.data.things;
 	  	sortByY(things);
-	  	things.forEach(function(thing){
-	  		setCollision(thing);
-	  	});
+	  	resetCollision();
 	  	// setTimeout(function(){
 	  		//console.log(things);
 			// console.log(isBlockInRange(things[0], things[1]));
@@ -699,10 +719,14 @@
 		// }, 1000);
 	  }
 	  if(e.data.newThing){
-
+	  	var thing = e.data.newThing;
+	  	createThing(1, thing.x, thing.y, thing.width, thing.height);
 	  }
 	  if(e.data.deleteThing){
 	  	deleteStuff(e.data.deleteThing.x, e.data.deleteThing.y);
+	  }
+	  if(e.data.stop){
+	  	alive = false;
 	  }
 	  console.log(e);
 	}, false);

@@ -22,6 +22,8 @@ function game(ctx, canvas){
 	spawnX = 70,
 	spawnY = 384,
 	friendSpawn = {x: 1, y: worldHeight - playerHeight},
+	currentLevelId;
+	levels = [],
 	others = [],
 	things = [],
 	spikes = [],
@@ -257,12 +259,15 @@ function game(ctx, canvas){
 
 	 var die = function(){
 	 	dead = true;
-	 	player.x = -500;
-		player.y = -1000;
+	 	player.x = worldWidth - playerWidth;
+		player.y = 0;
+		socket.emit('move', {sprite: sprite,id: socket.id, x: player.x, y: player.y});
 		countdown(5);
 		setTimeout(function(){
+			ySpeed = 0;
 			player.x = spawnX;
 			player.y = spawnY;
+			dead = false;
 		}, 5000);
 		camera.x = 0;
 		camera.y = 0;
@@ -372,6 +377,7 @@ function game(ctx, canvas){
 	var createThing = function(img, x, y, width, length){
 		newThing = new Thing(img, x, y, Number(width), Number(length));
 		setCollision(newThing);
+		sendToAllAIs({newThing: {x:x, y:y, width:width, height:length}});
 		things.push(newThing);
 	};
 
@@ -385,17 +391,14 @@ function game(ctx, canvas){
 	// createThing('blockImg', 455, worldHeight - 493, 50, 40);
 	// createThing('blockImg', 655, 420, 50, 40);
 
+	var sendToAllAIs = function (message){
+		AIs.forEach(function(ai){
+			ai.postMessage(message);
+		});	
+	};
 
 	var deleteStuff = function(clickX, clickY){
-
-		AIs.forEach(function(ai){
-			ai.postMessage({
-				deleteThing: {
-					x: clickX,
-					y: clickY,
-				}
-			});
-		});
+		sendToAllAIs({deleteThing: {x: clickX, y: clickY}});
 
 		for(var i = things.length - 1; i >=0; i--) {
 			if(clickX > things[i].x && clickX < things[i].x + Number(things[i].width) &&
@@ -439,10 +442,10 @@ function game(ctx, canvas){
 
 	 var nextFrame = function(){
 	 	//var start = new Date();
-	 	if(playing){
+	 	var newX = player.x;
+	 	var newY = player.y;
+	 	if(playing && !dead){
 
-		 	var newX = player.x;
-		 	var newY = player.y;
 
 		 	//take away player collision for collision checks
 			//clearCollision(x, y, playerWidth, playerHeight);
@@ -497,6 +500,7 @@ function game(ctx, canvas){
 
 			//camera.x = newX - canvasWidth/2;
 
+	 		if(newX !== player.x || newY !== player.y) socket.emit('move', {sprite: sprite,id: socket.id, x: newX, y: newY});
 			player.x = newX;
 			player.y = newY;
 	 	}
@@ -516,13 +520,11 @@ function game(ctx, canvas){
 	 		drawWithCam(spike);
 	 	});
 
-
 	 	others.forEach(function(other){
 	 		if(other) drawWithCam({img: spriteMap[other.sprite], x: other.x, y: other.y, width: playerWidth, height: playerHeight});
 	 	});
 
 	 	drawWithCam(player);
-	 	if(newX !== player.x || newY !== player.y) socket.emit('move', {sprite: sprite,id: socket.id, x: newX, y: newY});
 		//xSpeed = 0;
 		if(checkDeath(newX, newY)){
 			die();
@@ -549,6 +551,9 @@ function game(ctx, canvas){
 	    console.log(socket.id);
 
 	    socket.on('populate', function(data){
+	    	resetCollision();
+	    	things = [];
+	    	spikes = [];
 	    	others = JSON.parse(data.players);
 	    	for(var i = 0; i< others.length; i++){
         	  if(others[i].id === socket.id) {
@@ -566,6 +571,19 @@ function game(ctx, canvas){
 
 	    socket.emit('populate');
 
+	 	socket.on('allLevels', function(allLevels){
+	 		var rememberCurrent = $('.level-name')[0].value;
+	 		$('.levels').empty();
+	 		levels = allLevels;
+	 		allLevels.forEach(function(level){
+	 			var option = $('<option>' + level.name + '</option>');
+	 			$('.levels').append(option);
+	 		});
+	 		$('.levels').val(rememberCurrent);
+	 	});
+
+	 	socket.emit('getLevels');
+
 	    socket.on("newPlayer", function(playerInfo){
 	    	others.push({sprite: playerInfo.sprite, id: playerInfo.id, x: playerInfo.x, y: playerInfo.y});
 	    });
@@ -582,6 +600,7 @@ function game(ctx, canvas){
 	    });
 
 	    socket.on('delete', function(click){
+	    	sendToAllAIs({deleteThing: {x: click.clickX, y: click.clickY}});
 	    	deleteStuff(click.clickX, click.clickY);
 	    });
 
@@ -591,6 +610,11 @@ function game(ctx, canvas){
 
 	    socket.on('newSpike', function(spike){
 	    	createSpike($(spike.img)[0], spike.x, spike.y);
+	    });
+
+	    socket.on('levelSaved', function(level){
+	    	currentLevelId = level._id;
+	    	socket.emit('getLevels');
 	    });
 
 	    socket.on('disconnect', function(id){
@@ -608,7 +632,9 @@ function game(ctx, canvas){
 		if(playing){
 			playing = false;
 
-			var ai = new Worker('/javascripts/AI.js');
+			$('.auto').html('Return control');
+
+			//var ai = new Worker('/javascripts/AI.js');
 
 			ai.postMessage({
 				player: {
@@ -637,6 +663,10 @@ function game(ctx, canvas){
 				player.x = e.data.x;
 				player.y = e.data.y;
 			});
+		}else{
+			playing = true;
+			ai.postMessage({stop: true});
+			$('.auto').html('Possess me');
 		}
 	};
 
@@ -677,8 +707,57 @@ function game(ctx, canvas){
 			AIs.push(ai);
 	};
 
+	var save = function(){
+		console.log(typeof currentLevelId);
+		if(currentLevelId) currentLevelId = currentLevelId.toString();
+		if($('.level-name')[0] !== $('.levels').val()) currentLevelId = undefined;
+		var stringifiedThings = things.map(function(thing){
+				return {
+					img: $(thing.img).prop('outerHTML'),
+					x: thing.x,
+					y: thing.y,
+					width: thing.width,
+					height: thing.height
+				};
+			});
+		var stringifiedSpikes = spikes.map(function(spike){
+				return {
+					img: $(spike.img).prop('outerHTML'),
+					x: spike.x,
+					y: spike.y,
+					width: spike.width,
+					height: spike.height
+				};
+			});
+		var level = {
+			id: Number(currentLevelId),
+			name: $('.level-name')[0].value,
+			things: stringifiedThings,
+			spikes: stringifiedSpikes,
+		};
+
+		socket.emit('saveLevel', level);
+	};
+
+	var changeLevel = function(){
+		$('.level-name')[0].value = ($('.levels').val());
+		currentLevelId = undefined;
+		levels.forEach(function(level){
+			console.log(level.name, $('.levels').val());
+			if(level.name === $('.levels').val()) currentLevelId = level._id;
+		});
+		console.log(currentLevelId);
+	};
+
+	var loadLevel = function(){
+		socket.emit('loadLevel', currentLevelId);
+	};
+
 	$('.friend').click(friend);
 	$('.auto').click(auto);
+	$('.save').click(save);
+	$('.load').click(loadLevel);
+	$('.levels').change(changeLevel);
 
 	$('.loading-container').hide();
 	$('.post-load').show();

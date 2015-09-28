@@ -32,6 +32,8 @@ server.on('listening', onListening);
 
 
 var io = require('socket.io')(server);
+var Level = require('../models');
+var Level = mongoose.model('Level');
 
 var players = [];
 var things = [];
@@ -57,6 +59,40 @@ io.on('connection', function(socket){
                   break;
               }
         }
+    });
+
+    socket.on('getLevels', function(){
+        Level.find().then(function(levels){
+           socket.emit('allLevels', levels);
+        });
+    });
+
+    socket.on('loadLevel', function(levelId){
+      Level.findById(levelId).then(function(level){
+        things = level.things;
+        spikes = level.spikes;
+        socket.emit('populate', {things: things, players: JSON.stringify(players), spikes: spikes});
+      });
+    });
+
+    socket.on('saveLevel', function(newLevel){
+      console.log('inc level:', newLevel);
+        Level.findOne({name: newLevel.name}).then(function(level){
+          if(level){
+              for(var i in newLevel){
+              level[i] = newLevel[i];
+            }
+            level.save().then(function(savedLevel){
+              console.log(savedLevel);
+              //socket.emit('levelSaved', savedLevel);
+            });
+          }else{
+              Level.create(newLevel).then(function(savedLevel){
+                console.log(savedLevel);
+                socket.emit('levelSaved', savedLevel);
+                });
+          }
+        }); 
     });
 
     socket.on('populate', function(){
