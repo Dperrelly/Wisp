@@ -22,7 +22,6 @@ function game(ctx, canvas){
 	spawnX = 70,
 	spawnY = 384,
 	friendSpawn = {x: 1, y: worldHeight - playerHeight},
-	currentLevelId;
 	levels = [],
 	others = [],
 	things = [],
@@ -42,7 +41,7 @@ function game(ctx, canvas){
     	backgroundImg: $('<img id="background" src="/images/background.png">')[0],
     	spikeImg: $('<img id="spike" src="/images/spike.png" width="50" height="70">')[0],
    		sprite1Img: $('<img id="sprite1" src="/images/sprite1.png">')[0],
-   		sprite2Img: $('<img id="sprite2" src="/images/sprite2.png">')[0],
+   		sprite2Img: $('<img id="sprite2" src="/images/sprite2.png">')[0]
 	};
 
 	//initialize controls
@@ -525,6 +524,8 @@ function game(ctx, canvas){
 	 	});
 
 	 	drawWithCam(player);
+		ctx.fillStyle = "#FFFFFF";
+	 	ctx.fillText("me",player.x +4 - camera.x, player.y-5);
 		//xSpeed = 0;
 		if(checkDeath(newX, newY)){
 			die();
@@ -535,6 +536,7 @@ function game(ctx, canvas){
 	 	//drawCollisionGrid();
 	 };
 	var FPS_Counter = 0;
+	
 	nextFrame();
 	//drawCollisionGrid();
 	setInterval(function(){
@@ -551,7 +553,6 @@ function game(ctx, canvas){
 	    console.log(socket.id);
 
 	    socket.on('populate', function(data){
-	    	resetCollision();
 	    	things = [];
 	    	spikes = [];
 	    	others = JSON.parse(data.players);
@@ -567,11 +568,18 @@ function game(ctx, canvas){
         	data.spikes.forEach(function(spike){
         		createSpike($(spike.img)[0], spike.x, spike.y);
         	});
+        	if(data.levelName){
+		    	$('.levels').val(data.levelName);
+		    	$('.level-name')[0].value = data.levelName;
+        	}
+        	socket.emit('getLevels');
+        	resetCollision();
 	    });
 
 	    socket.emit('populate');
 
 	 	socket.on('allLevels', function(allLevels){
+	 		console.log('refreshing levels');
 	 		var rememberCurrent = $('.level-name')[0].value;
 	 		$('.levels').empty();
 	 		levels = allLevels;
@@ -581,8 +589,6 @@ function game(ctx, canvas){
 	 		});
 	 		$('.levels').val(rememberCurrent);
 	 	});
-
-	 	socket.emit('getLevels');
 
 	    socket.on("newPlayer", function(playerInfo){
 	    	others.push({sprite: playerInfo.sprite, id: playerInfo.id, x: playerInfo.x, y: playerInfo.y});
@@ -612,9 +618,14 @@ function game(ctx, canvas){
 	    	createSpike($(spike.img)[0], spike.x, spike.y);
 	    });
 
-	    socket.on('levelSaved', function(level){
+	    socket.on('changeLevel', function(level){
+	    	console.log('level:', level);
 	    	currentLevelId = level._id;
-	    	socket.emit('getLevels');
+	    	socket.emit('populate');
+	   //  	var option = $('<option>' + level.name + '</option>');
+	 		// $('.levels').append(option);
+	   //  	$('.levels').val(level.name);
+	   //  	$('.level-name')[0].value = level.name;
 	    });
 
 	    socket.on('disconnect', function(id){
@@ -708,9 +719,6 @@ function game(ctx, canvas){
 	};
 
 	var save = function(){
-		console.log(typeof currentLevelId);
-		if(currentLevelId) currentLevelId = currentLevelId.toString();
-		if($('.level-name')[0] !== $('.levels').val()) currentLevelId = undefined;
 		var stringifiedThings = things.map(function(thing){
 				return {
 					img: $(thing.img).prop('outerHTML'),
@@ -730,7 +738,6 @@ function game(ctx, canvas){
 				};
 			});
 		var level = {
-			id: Number(currentLevelId),
 			name: $('.level-name')[0].value,
 			things: stringifiedThings,
 			spikes: stringifiedSpikes,
@@ -741,16 +748,11 @@ function game(ctx, canvas){
 
 	var changeLevel = function(){
 		$('.level-name')[0].value = ($('.levels').val());
-		currentLevelId = undefined;
-		levels.forEach(function(level){
-			console.log(level.name, $('.levels').val());
-			if(level.name === $('.levels').val()) currentLevelId = level._id;
-		});
-		console.log(currentLevelId);
 	};
 
 	var loadLevel = function(){
-		socket.emit('loadLevel', currentLevelId);
+		console.log('loading...', $('.levels').val());
+		socket.emit('loadLevel', $('.levels').val());
 	};
 
 	$('.friend').click(friend);

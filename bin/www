@@ -38,6 +38,7 @@ var Level = mongoose.model('Level');
 var players = [];
 var things = [];
 var spikes = [];
+var currentLevel;
 
 io.on('connection', function(socket){
     console.log('A new client has connected!');
@@ -67,30 +68,35 @@ io.on('connection', function(socket){
         });
     });
 
-    socket.on('loadLevel', function(levelId){
-      Level.findById(levelId).then(function(level){
+    socket.on('loadLevel', function(levelName){
+      Level.findOne({name: levelName}).then(function(level){
+        currentLevel = levelName;
         things = level.things;
         spikes = level.spikes;
-        socket.emit('populate', {things: things, players: JSON.stringify(players), spikes: spikes});
+        io.emit('populate', {things: things, players: JSON.stringify(players), spikes: spikes, levelName:levelName});
       });
     });
 
     socket.on('saveLevel', function(newLevel){
-      console.log('inc level:', newLevel);
+      console.log('trying to save: ', newLevel);
         Level.findOne({name: newLevel.name}).then(function(level){
+          console.log('level found: ', level);
           if(level){
               for(var i in newLevel){
               level[i] = newLevel[i];
             }
-            level.save().then(function(savedLevel){
-              console.log(savedLevel);
-              //socket.emit('levelSaved', savedLevel);
-            });
+          level.save().then(function(savedLevel){
+            io.emit('changeLevel', savedLevel);
+            io.emit('populate', {things: things, players: JSON.stringify(players), spikes: spikes, levelName: currentLevel});
+          });
           }else{
+              console.log('creating');
               Level.create(newLevel).then(function(savedLevel){
-                console.log(savedLevel);
-                socket.emit('levelSaved', savedLevel);
-                });
+                  console.log('LEEROY');
+                  currentLevel = savedLevel.name;
+                  io.emit('changeLevel', savedLevel);
+                  io.emit('populate', {things: things, players: JSON.stringify(players), spikes: spikes, levelName: currentLevel});
+              });
           }
         }); 
     });

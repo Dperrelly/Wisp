@@ -1,5 +1,5 @@
 mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/game-thing');
+mongoose.connect('mongodb://localhost/game-test');
 
 // mongoose.on('connection', function(){
 // 	console.log('connected to db');
